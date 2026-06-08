@@ -1,0 +1,27 @@
+#Dockerfile pour WebAPI
+
+
+# ── Build stage ──────────────────────────────────────────────
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+# Copier le .csproj en premier pour bénéficier du cache Docker
+# (si le .csproj n'a pas changé, dotnet restore n'est pas relancé)
+COPY ["Task_Manager.csproj", "./"]
+RUN dotnet restore
+
+# Copier le reste du code et compiler
+COPY . .
+RUN dotnet publish -c Release -o /app/publish
+
+# ── Runtime stage ────────────────────────────────────────────
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+WORKDIR /app
+
+# Copier uniquement les binaires compilés (pas le SDK)
+COPY --from=build /app/publish .
+
+# Port exposé par Kestrel (WebAPI)
+EXPOSE 8080
+
+ENTRYPOINT ["dotnet", "Task_Manager.dll"]

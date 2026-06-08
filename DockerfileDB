@@ -1,0 +1,15 @@
+#Dockerfile pour SQL Server
+FROM mcr.microsoft.com/mssql/server:2022-latest
+
+# Variables d'environnement
+ENV MSSQL_SA_PASSWORD="AdminSQLServer@P4321"
+ENV ACCEPT_EULA="Y"
+ENV MSSQL_PID="Express"
+
+# Expose le port SQL Server
+EXPOSE 1433
+
+# Volume pour la persistance des données
+VOLUME /var/opt/mssql
+
+
