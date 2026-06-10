@@ -2,6 +2,13 @@
 
 namespace Task_Manager.Models
 {
+    public class Token
+    {
+        public required string AccessToken { get; set; }
+        public string TokenType { get; set; } = "bearer";
+    }
+
+
     public class RefreshToken
     {
         public int Id { get; set; }

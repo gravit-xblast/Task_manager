@@ -3,6 +3,3 @@ bin/
 .vs/
 
 Task_Manager.csproj.user
-
-Controllers/WeatherForecastController.cs
-WeatherForecast.cs
