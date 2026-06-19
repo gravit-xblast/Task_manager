@@ -1,12 +1,18 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using System.Text;
 using Task_Manager.Authentication;
 using Task_Manager.Data;
+using Task_Manager.Models;
+using DotNetEnv;
 
+Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Configuration.AddEnvironmentVariables();
 
 // -------------------------
 // Configuration JWT
@@ -14,10 +20,6 @@ var builder = WebApplication.CreateBuilder(args);
 var secretKey = builder.Configuration["Jwt:SecretKey"]
     ?? throw new InvalidOperationException("Jwt:SecretKey n'est pas défini dans la configuration");
 
-// temp - debug
-Console.WriteLine(
-    $"Secret = '{builder.Configuration["Jwt:SecretKey"]}'"
-);
 
 builder.Services.AddAuthentication(options =>
 {
@@ -45,8 +47,11 @@ builder.Services.AddAuthentication(options =>
 // -------------------------
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
-    options.AddPolicy("UserOrAdmin", policy => policy.RequireRole("User", "Admin"));
+    // Ces politiques sont définies ici de manière centralisée.
+    // Dans les controllers, utiliser [Authorize(Policy = "AdminOnly")]
+    options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin", "SuperAdmin"));
+    options.AddPolicy("SuperAdminOnly", policy => policy.RequireRole("SuperAdmin"));
+    options.AddPolicy("UserOrAdmin", policy => policy.RequireRole("Standard", "Admin", "SuperAdmin"));
 });
 
 
@@ -62,23 +67,38 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new() { Title = "Task_manager API", Version = "v1" });
 
-    // Ajout du support Bearer Token dans Swagger
-    c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    // CORRIGÉ : SecuritySchemeType.Http + Scheme "bearer" est la définition
+    // correcte pour un schéma Bearer JWT selon la spec OpenAPI 3.0.
+    // Avec ApiKey, Swagger UI demande de saisir "Bearer <token>" manuellement.
+    // Avec Http + bearer, Swagger UI préfixe automatiquement "Bearer ".
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = "JWT Authorization header. Format: Bearer {token}",
+        Description = "Entrez votre JWT (sans le préfixe 'Bearer ')",
         Name = "Authorization",
-        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
-        Scheme = "Bearer"
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT"
     });
-    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+
+    // NOTE : AddSecurityRequirement ici s'applique globalement à tous les
+    // endpoints dans Swagger UI (y compris /register et /token qui sont
+    // [AllowAnonymous]). Ce n'est pas un bug de sécurité (le middleware
+    // d'authentification respecte [AllowAnonymous] au runtime), mais
+    // l'interface Swagger affiche un cadenas sur ces endpoints publics,
+    // ce qui peut prêter à confusion.
+    //
+    // Pour être rigoureux, remplacer ce bloc par un OperationFilter
+    // (ex: SecurityRequirementsOperationFilter de Swashbuckle.AspNetCore.Filters)
+    // qui n'ajoute le cadenas que sur les endpoints [Authorize].
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
-            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            new OpenApiSecurityScheme
             {
-                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                Reference = new OpenApiReference
                 {
-                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Type = ReferenceType.SecurityScheme,
                     Id   = "Bearer"
                 }
             },
@@ -96,8 +116,6 @@ builder.Services.AddDbContext<Task_Manager_DbContext>(options =>
             // Retry automatique si SQL Server n'est pas encore prêt
             // (cas fréquent au démarrage Docker : le container SQL
             // met ~15-30s à être pleinement disponible).
-            // EnableRetryOnFailure retente jusqu'à 5 fois avec
-            // un délai croissant entre chaque tentative.
             sqlOptions.EnableRetryOnFailure(
                 maxRetryCount: 5,
                 maxRetryDelay: TimeSpan.FromSeconds(10),
@@ -108,39 +126,16 @@ builder.Services.AddDbContext<Task_Manager_DbContext>(options =>
 );
 
 
-
 var app = builder.Build();
 
-// ==============================================================
-// SECTION 3 — MIGRATION AUTOMATIQUE AU DÉMARRAGE
-//
-// IMPORTANT pour Docker : on ne peut pas lancer "dotnet ef
-// database update" manuellement à chaque déploiement.
-// Ce bloc applique automatiquement les migrations en attente
-// à chaque démarrage du container.
-//
-// Flux :
-//   - Récupère une instance du DbContext depuis le DI container
-//   - Appelle database.Migrate() qui :
-//       a) Crée la base si elle n'existe pas
-//       b) Applique toutes les migrations non encore appliquées
-//       c) Ne touche à rien si tout est à jour
-//
-// Le retry d'EnableRetryOnFailure (configuré sur UseSqlServer
-// ci-dessus) gère les tentatives si SQL Server n'est pas encore
-// prêt. Si toutes les tentatives échouent, l'app lève une
-// exception au démarrage — comportement souhaitable (le container
-// s'arrête et Docker Compose peut le redémarrer via restart: on-failure).
-// ==============================================================
+// -------------------------
+// Migration automatique au démarrage
+// -------------------------
 using (var scope = app.Services.CreateScope())
 {
-    //var db = scope.ServiceProvider.GetRequiredService<Task_Manager_DbContext>();
-    //db.Database.Migrate();
-
     try
     {
         var db = scope.ServiceProvider.GetRequiredService<Task_Manager_DbContext>();
-
         app.Logger.LogInformation("Application des migrations...");
         db.Database.Migrate();
         app.Logger.LogInformation("Migrations appliquées avec succès.");
@@ -150,9 +145,39 @@ using (var scope = app.Services.CreateScope())
         app.Logger.LogError(ex, "Erreur lors de l'application des migrations.");
         throw;
     }
+
+    try
+    {
+        var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+        var superAdminEmail = builder.Configuration["SuperAdmin:Email"]
+            ?? throw new InvalidOperationException("SuperAdmin:Email manquant");
+
+        var existing = await userService.GetUserByEmail(superAdminEmail);
+        if (existing is null)
+        {
+            await userService.RegisterUser(new RegisterRequest
+            {
+                UserName = builder.Configuration["SuperAdmin:UserName"] ?? "superadmin",
+                Email = superAdminEmail,
+                Password = builder.Configuration["SuperAdmin:Password"]
+                    ?? throw new InvalidOperationException("SuperAdmin:Password manquant")
+            }, UserStatus.SuperAdmin);
+
+            app.Logger.LogInformation("Compte SuperAdmin créé.");
+        }
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError(ex, "Erreur lors du seed du compte SuperAdmin.");
+        throw;
+    }
 }
 
-// Pipeline
+// -------------------------
+// Pipeline HTTP
+// ORDRE CRITIQUE : Authentication → Authorization → MapControllers
+// Inverser les deux premiers rend [Authorize] inefficace.
+// -------------------------
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -160,11 +185,10 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseAuthentication(); // si auth utilisée
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.Run();
-
 
 
 
