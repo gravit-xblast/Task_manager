@@ -11,7 +11,6 @@ namespace Task_Manager.Data
         }
         public DbSet<User> Users { get; set; } // => Set<User>();
         public DbSet<TaskItem> TaskItems { get; set; }  // => Set<TaskItem>();
-        public DbSet<RefreshToken> RefreshTokens { get; set; } // => Set<RefreshToken>();
         public DbSet<Notification> Notifications { get; set; } // => Set<Notification>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -22,12 +21,6 @@ namespace Task_Manager.Data
                 .HasOne(t => t.User)
                 .WithMany(u => u.TaskItems)
                 .HasForeignKey(t => t.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            modelBuilder.Entity<RefreshToken>()
-                .HasOne(r => r.User)
-                .WithMany(u => u.RefreshTokens)
-                .HasForeignKey(r => r.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<Notification>()
@@ -45,23 +38,6 @@ namespace Task_Manager.Data
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.Email)
                 .IsUnique();
-
-            modelBuilder.Entity<RefreshToken>()
-                .HasIndex(r => r.Token)
-                .IsUnique();
         }
     }
 }
-
-
-
-
-
-
-/*protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-{
-    optionsBuilder.UseSqlServer(
-        //"Server=localhost,1433;Database=SchoolDB;User Id=sa;Password=0001SQL@Server@0001;TrustServerCertificate=True"
-        "Server=127.0.0.1,1433;Database=SchoolDB;User Id=sa;Password=0001SQL@Server@0001;TrustServerCertificate=True"
-    );
-}*/

@@ -2,24 +2,57 @@
 
 namespace Task_Manager.Models
 {
-    public class RegisterRequest
+    public class RegisterRequest 
     {
+        [Required(ErrorMessage = "Le nom d'utilisateur est requis.")]
+        [MaxLength(100)]
         public string UserName { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "L'email est requis.")]
+        [EmailAddress(ErrorMessage = "Le format de l'email est invalide.")]
+        [MaxLength(100)]
         public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Le mot de passe est requis.")]
+        [MinLength(8, ErrorMessage = "Le mot de passe doit contenir au moins 8 caractères.")]
         public string Password { get; set; } = string.Empty;
+
+        // public string ConfirmedPassword { get; set; } = string.Empty;
     }
 
     public class LoginRequest
     {
-        [Required]
+        [Required(ErrorMessage = "L'email est requis.")]
+        [EmailAddress(ErrorMessage = "Le format de l'email est invalide.")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Le mot de passe est requis.")]
+        public string Password { get; set; } = string.Empty;
+    }
+
+
+    public class DeleteUserRequest
+    {
+        [Required(ErrorMessage = "L'email est requis.")]
+        [EmailAddress(ErrorMessage = "Le format de l'email est invalide.")]
+        public string Email { get; set; } = string.Empty;
+    }
+
+
+    public class RegisterResponse 
+    {
+        public string? Message { get; set; }
         public string? UserName { get; set; }
+        public string? Email { get; set; }
+        public UserStatus UserStatus { get; set; } = UserStatus.Standard;
+    }
 
-        [Required]
-        [EmailAddress]
-        public required string Email { get; set; }
 
-        [Required]
-        public required string Password { get; set; }
+    public enum UserStatus
+    {
+        Standard,
+        Admin,
+        SuperAdmin,
     }
 
 
@@ -38,8 +71,7 @@ namespace Task_Manager.Models
         [Required]
         public string PasswordHash { get; set; } = string.Empty;
 
-        [Required]
-        public bool IsAdmin { get; set; }
+        public UserStatus UserStatus { get; set; } = UserStatus.Standard;
 
         public string? RefreshToken { get; set; }
 
@@ -53,8 +85,6 @@ namespace Task_Manager.Models
 
         // Navigation properties
         public ICollection<TaskItem> TaskItems { get; set; } = new List<TaskItem>();
-
-        public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 
         public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
     }

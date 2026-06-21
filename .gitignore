@@ -2,4 +2,6 @@ obj/
 bin/
 .vs/
 
+.env
+
 Task_Manager.csproj.user

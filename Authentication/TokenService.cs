@@ -4,6 +4,7 @@ using System.Security.Claims;
 using System.Text;
 using Task_Manager.Models;
 
+
 namespace Task_Manager.Authentication
 {
     // Contrat pour la génération de tokens JWT.
@@ -11,6 +12,10 @@ namespace Task_Manager.Authentication
     {
         // Génère un token JWT signé pour l'utilisateur donné.
         string CreateAccessToken(User user);
+
+        // Durée de validité de l'access token, en secondes.
+        // Utilisée pour renseigner le champ "expires_in" de la réponse
+        int AccessTokenExpiresInSeconds { get; }
     }
 
 
@@ -29,12 +34,15 @@ namespace Task_Manager.Authentication
             _config = config;
         }
 
+        public int AccessTokenExpiresInSeconds =>
+           _config.GetValue<int>("Jwt:ExpireMinutes", 60) * 60;
+
         // Crée un token JWT contenant les claims suivants :
         //   - Email    : adresse email de l'utilisateur
         //   - Sub      : subject (email)
         //   - Jti      : identifiant unique du token (GUID)
         //   - Role     : "Admin" ou "User" selon user.IsAdmin
-        // Lève InvalidOperationException si jwt_secretKey est manquant.
+        // Lève InvalidOperationException si Jwt:SecretKey est manquant.
         public string CreateAccessToken(User user)
         {
             var secretKey = _config["Jwt:SecretKey"] ?? throw new InvalidOperationException("Jwt:SecretKey missing");
@@ -48,9 +56,7 @@ namespace Task_Manager.Authentication
                 new(ClaimTypes.Email, user.Email),
                 new(JwtRegisteredClaimNames.Sub, user.Email),
                 new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-
-                //(pas besoin de toucher la DB à chaque requête)
-                new(ClaimTypes.Role, user.IsAdmin ? "Admin" : "User"),
+                new(ClaimTypes.Role, user.UserStatus.ToString()),
             };
 
             // var expireMinutes = _config.GetValue<int>("Jwt:ExpireMinutes");
