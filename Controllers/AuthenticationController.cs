@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Task_Manager.Authentication;
 using Task_Manager.Models;
-
+                                 
 namespace Task_Manager.Controllers
 {
     [ApiController]
@@ -51,8 +51,6 @@ namespace Task_Manager.Controllers
                 UserStatus = user.UserStatus
             });
         }
-
-
         // -------------------------
         // POST /token
         // Authentification → retourne le JWT

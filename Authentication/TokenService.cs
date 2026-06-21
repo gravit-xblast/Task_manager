@@ -18,6 +18,13 @@ namespace Task_Manager.Authentication
         int AccessTokenExpiresInSeconds { get; }
     }
 
+
+    // Service de création de tokens JWT.
+    // Configuration requise dans appsettings.json ou variables d'environnement :
+    //   - Jwt:jwt_secretKey  => clé secrète de signature (HMAC-SHA256)
+    //   - Jwt:Issuer         => émetteur du token
+    //   - Jwt:Audience       => destinataire du token
+    //   - Jwt:ExpireMinutes  => durée de validité en minutes
     public class TokenService : ITokenService
     {
         private readonly IConfiguration _config;
@@ -52,6 +59,7 @@ namespace Task_Manager.Authentication
                 new(ClaimTypes.Role, user.UserStatus.ToString()),
             };
 
+            // var expireMinutes = _config.GetValue<int>("Jwt:ExpireMinutes");
             var expireMinutes = _config.GetValue<int>("Jwt:ExpireMinutes", 60);
 
             var token = new JwtSecurityToken(

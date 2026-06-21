@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Task_Manager.Data;
 using Task_Manager.Models;
 
@@ -21,6 +21,7 @@ namespace Task_Manager.Authentication
     public class UserService : IUserService
     {
         private readonly Task_Manager_DbContext _context;
+
 
         public UserService(Task_Manager_DbContext context)
         {
@@ -71,7 +72,6 @@ namespace Task_Manager.Authentication
                 return null;
 
             var now = DateTime.UtcNow;
-
             var newUser = new User
             {
                 UserName = data.UserName,
