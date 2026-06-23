@@ -14,6 +14,8 @@ namespace Task_Manager.Authentication
         Task<List<User>> GetAllUsers();
         Task<bool> DeleteUser(int id);
 
+        Task<UpdateUserResult> PromoteUser(string requesterEmail, PromoteUserRequest request);
+
         // Task<bool> PromoteUser(string email, UserStatus newStatus); // à ajouter
     }
 
@@ -34,6 +36,7 @@ namespace Task_Manager.Authentication
         {
             return await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
         }
+
 
         // Recherche un utilisateur par Id
         public async Task<User?> GetUserById(int id)
@@ -123,6 +126,30 @@ namespace Task_Manager.Authentication
             await _context.SaveChangesAsync();
 
             return true;
+        }
+
+
+        public async Task<UpdateUserResult> PromoteUser(string requesterEmail, PromoteUserRequest request)
+        {
+            // Aucun champ à modifier fourni
+            if (request.NewStatus is null && request.IsActive is null)
+                return UpdateUserResult.NoChanges;
+
+
+            var targetUser = await GetUserByEmail(request.Email);
+            if (targetUser is null)
+                return UpdateUserResult.UserNotFound;
+
+            if (request.NewStatus is not null)
+                targetUser.UserStatus = request.NewStatus.Value;
+
+            if (request.IsActive is not null)
+                targetUser.IsActive = request.IsActive.Value;
+
+            targetUser.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            return UpdateUserResult.Success;
         }
     }
 }
