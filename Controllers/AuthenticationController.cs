@@ -23,7 +23,7 @@ namespace Task_Manager.Controllers
         // Accessible sans authentification
         // -------------------------
         [AllowAnonymous]
-        [HttpPost("register")]
+        [HttpPost("Register")]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Register([FromBody] RegisterRequest data, UserStatus userStatus = UserStatus.Standard)
@@ -32,7 +32,6 @@ namespace Task_Manager.Controllers
             // par défaut -> impossible de créer un compte admin via cet endpoint
             // public, ce qui est le comportement souhaité.
             var user = await _userService.RegisterUser(data, userStatus);
-
             if (user is null)
             {
                 return StatusCode(400, new RegisterResponse
@@ -42,7 +41,6 @@ namespace Task_Manager.Controllers
                     Email = null
                 });
             }
-
             return StatusCode(201, new RegisterResponse
             {
                 Message = "Utilisateur créé avec succès",
@@ -51,12 +49,14 @@ namespace Task_Manager.Controllers
                 UserStatus = user.UserStatus
             });
         }
+
+
         // -------------------------
         // POST /token
         // Authentification → retourne le JWT
         // -------------------------
         [AllowAnonymous]
-        [HttpPost("token")]
+        [HttpPost("Login")]
         [ProducesResponseType(typeof(Token), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]

@@ -30,8 +30,24 @@ namespace Task_Manager.Models
         public string Password { get; set; } = string.Empty;
     }
 
+    public class PromoteUserRequest
+    {
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; } = string.Empty;
+        public UserStatus? NewStatus { get; set; }   // nullable → non modifié si absent
+        public bool? IsActive { get; set; }          // nullable → non modifié si absent
+    }
+
 
     public class DeleteUserRequest
+    {
+        [Required(ErrorMessage = "L'email est requis.")]
+        [EmailAddress(ErrorMessage = "Le format de l'email est invalide.")]
+        public string Email { get; set; } = string.Empty;
+    }
+
+    public class ReadUserRequest
     {
         [Required(ErrorMessage = "L'email est requis.")]
         [EmailAddress(ErrorMessage = "Le format de l'email est invalide.")]
@@ -48,11 +64,29 @@ namespace Task_Manager.Models
     }
 
 
+    public class UserResponse
+    {
+        public int Id { get; set; }
+        public string UserName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public UserStatus UserStatus { get; set; }
+        public bool IsActive { get; set; }
+        public DateTime CreatedAt { get; set; }
+    }
+
     public enum UserStatus
     {
         Standard,
         Admin,
         SuperAdmin,
+    }
+
+    public enum UpdateUserResult
+    {
+        Success,
+        UserNotFound,
+        Forbidden,        // tente de se modifier soi-même
+        NoChanges         // aucun champ fourni dans la requête
     }
 
 
@@ -73,9 +107,9 @@ namespace Task_Manager.Models
 
         public UserStatus UserStatus { get; set; } = UserStatus.Standard;
 
-        public string? RefreshToken { get; set; }
+        //public string? RefreshToken { get; set; }
 
-        public DateTime? RefreshTokenExpiry { get; set; }
+        //public DateTime? RefreshTokenExpiry { get; set; }
 
         public DateTime CreatedAt { get; set; }
 
