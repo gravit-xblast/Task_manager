@@ -107,9 +107,9 @@ namespace Task_Manager.Models
 
         public UserStatus UserStatus { get; set; } = UserStatus.Standard;
 
-        //public string? RefreshToken { get; set; }
+        public string? RefreshToken { get; set; }
 
-        //public DateTime? RefreshTokenExpiry { get; set; }
+        public DateTime? RefreshTokenExpiry { get; set; }
 
         public DateTime CreatedAt { get; set; }
 

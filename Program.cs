@@ -14,9 +14,6 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration.AddEnvironmentVariables();
 
-// -------------------------
-// Configuration JWT
-// -------------------------
 var secretKey = builder.Configuration["Jwt:SecretKey"]
     ?? throw new InvalidOperationException("Jwt:SecretKey n'est pas défini dans la configuration");
 
@@ -38,6 +35,19 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = builder.Configuration["Jwt:Audience"],
         ValidateLifetime = true,
         ClockSkew = TimeSpan.Zero   // Pas de tolérance sur l'expiration
+    };
+
+    // ← AJOUT : lecture du token depuis le cookie HttpOnly
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var cookie = context.Request.Cookies["AccessToken"];
+            if (!string.IsNullOrEmpty(cookie))
+                context.Token = cookie;
+
+            return Task.CompletedTask;
+        }
     };
 });
 
@@ -189,7 +199,3 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.Run();
-
-
-
-
