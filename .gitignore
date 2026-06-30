@@ -5,3 +5,5 @@ bin/
 .env
 
 Task_Manager.csproj.user
+Task_Manager.Tests/Task_Manager.Tests.sln
+Task_Manager.Tests/obj/

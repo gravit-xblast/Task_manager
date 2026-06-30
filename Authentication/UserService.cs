@@ -132,11 +132,15 @@ namespace Task_Manager.Authentication
         public async Task<UpdateUserResult> PromoteUser(string requesterEmail, PromoteUserRequest request)
         {
             // Aucun champ à modifier fourni
-            if (request.NewStatus is null && request.IsActive is null)
-                return UpdateUserResult.NoChanges;
 
+            //if (request.NewStatus is null && request.IsActive is null)
+            //    return UpdateUserResult.NoChanges;
 
             var targetUser = await GetUserByEmail(request.Email);
+
+            if (targetUser?.Email == requesterEmail)
+                return UpdateUserResult.Forbidden;
+
             if (targetUser is null)
                 return UpdateUserResult.UserNotFound;
 
